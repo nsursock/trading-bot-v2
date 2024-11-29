@@ -32,7 +32,7 @@ def risk_management_listener():
             # Wait for a new message to process
             i, low_price, high_price = risk_management_queue.get()
             live_env.envs[0].handle_risk_management_basic(i, low_price, high_price)
-            logging.info(f"Handled risk management for symbol index {i} with low: {low_price} and high: {high_price}")
+            logging.debug(f"Handled risk management for symbol index {i} with low: {low_price} and high: {high_price}")
         except Exception as e:
             logging.error(f"Error in risk management listener: {e}")
 
