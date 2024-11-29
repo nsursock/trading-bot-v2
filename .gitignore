@@ -1,0 +1,9 @@
+.DS_Store
+.env
+eval_*
+market_data
+oldies
+optim_*
+debug.log*
+info.log*
+version-*zip
