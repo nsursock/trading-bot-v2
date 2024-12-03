@@ -3,58 +3,6 @@ import logging
 import traceback
 import numpy as np
 
-def calculate_short_term_reward(self, action):
-    try:
-        current_prices = self.data_matrix[self.current_step, :, self.mapping['close']]
-        reward = 0
-
-        # Initialize arrays for pnl and return_on_investment
-        pnl = [0] * self.num_symbols
-        return_on_investment = [0] * self.num_symbols
-
-        for i in range(self.num_symbols):
-            position = self.positions[i]
-            if position:
-                entry_price = position['entry_price']
-                position_size = position['position_size']
-                leverage = position['leverage']
-                collateral = position['collateral']
-                
-                pnl[i] = (current_prices[i] - entry_price) * position_size * leverage
-                if position['type'] == 'short':
-                    pnl[i] = -pnl[i]  # Reverse PnL for short positions
-
-                # Calculate return
-                return_on_investment[i] = pnl[i] / collateral if collateral != 0 else 0
-
-        # Calculate metrics
-        net_profit_value = net_profit(np.array(pnl))
-        sharpe_ratio_value = sharpe(np.array(return_on_investment))
-        drawdown_value = max_drawdown(np.array(return_on_investment))
-
-        # Hyperparameters
-        alpha = self.params.get('alpha', 1.0)
-        beta = self.params.get('beta', 1.0)
-        gamma = self.params.get('gamma', 1.0)
-
-        # Calculate transaction costs
-        transaction_costs = sum(1 for action_value in action if action_value != 0) * float(self.params['trading_penalty'])
-
-        # Calculate reward
-        reward = (net_profit_value +
-                  alpha * sharpe_ratio_value -
-                  beta * drawdown_value -
-                  gamma * transaction_costs)
-
-        logging.debug(f"Computing short-term reward: {reward} with net profit {net_profit_value}, sharpe ratio {sharpe_ratio_value}, drawdown {drawdown_value}, and transaction costs {transaction_costs}")
-
-        return reward
-
-    except Exception as e:
-        logging.error("An error occurred in calculate_short_term_reward")
-        logging.error(traceback.format_exc())
-        return None
-
 def calculate_combined_reward(self):
     try:
         current_prices = self.data_matrix[self.current_step, :, self.mapping['close']]
@@ -127,13 +75,9 @@ def calculate_consecutive_pnl_reward(self, action):
         current_prices = self.data_matrix[self.current_step, :, self.mapping['close']]
         reward = 0
 
-        # Initialize arrays for pnl, consecutive positive PnLs, and previous returns
+        # Initialize arrays for pnl and consecutive positive PnLs
         pnl = [0] * self.num_symbols
         consecutive_positive_pnls = [0] * self.num_symbols  # Track consecutive positive PnLs
-        previous_returns = self.previous_returns if hasattr(self, 'previous_returns') else [0] * self.num_symbols
-
-        # Initialize rate_of_change
-        rate_of_change = 0
 
         for i in range(self.num_symbols):
             position = self.positions[i]
@@ -141,41 +85,26 @@ def calculate_consecutive_pnl_reward(self, action):
                 entry_price = position['entry_price']
                 position_size = position['position_size']
                 leverage = position['leverage']
-                collateral = position['collateral']
                 
                 pnl[i] = (current_prices[i] - entry_price) * position_size * leverage
                 if position['type'] == 'short':
                     pnl[i] = -pnl[i]  # Reverse PnL for short positions
 
-                # Calculate return
-                current_return = pnl[i] / collateral if collateral != 0 else 0
-
-                # Calculate rate of change of return
-                rate_of_change = current_return - previous_returns[i]
-
                 # Update consecutive positive PnL count
                 if pnl[i] > 0:
-                    consecutive_positive_pnls[i] += 1 * rate_of_change
+                    consecutive_positive_pnls[i] += 1
                 else:
                     consecutive_positive_pnls[i] = 0
 
-                # Reward based on rate of change
-                # reward += rate_of_change
-
-                # Update previous return
-                previous_returns[i] = current_return
-
         # Calculate reward based on consecutive positive PnLs
-        reward += sum(consecutive_positive_pnls)  # Sum of all streaks
-
+        reward = sum(consecutive_positive_pnls)  # Sum of all streaks
+        
         # Introduce a penalty for trading activity
         trading_penalty = sum(1 for action_value in action if action_value != 0) * float(self.params['trading_penalty'])
         reward -= trading_penalty
 
-        # Store previous returns for the next step
-        self.previous_returns = previous_returns
 
-        logging.debug(f"Computing consecutive PnL reward: {reward} with streaks {consecutive_positive_pnls} and rate of change {rate_of_change}")
+        logging.debug(f"Computing consecutive PnL reward: {reward} with streaks {consecutive_positive_pnls}")
 
         return reward
 

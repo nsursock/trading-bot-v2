@@ -14,7 +14,7 @@ def random_date(start, end):
     return start + timedelta(days=random.randint(0, (end - start).days))
 
 financial_params = {
-    'initial_balance': 1_000,
+    'initial_balance': 5000,
     'leverage_min': 1,
     'leverage_max': 150,
     'collateral_min': 50,
@@ -39,7 +39,7 @@ constant_params = {
 
 
 # Define the range for the random date
-start_date = datetime(2021, 4, 1)
+start_date = datetime(2020, 1, 1)
 end_date = datetime(2024, 12, 31)
 
 # choose one of the following
@@ -89,14 +89,15 @@ basic_params = {
 
 unittest_params = {
     'market_data': 'original', # 'original' or 'random' or 'synthetic'
-    # 'symbols': sorted(['ADA', 'BNB', 'EOS', 'ETH', 'IOTA', 'LTC', 'NEO', 'QTUM', 'XLM', 'XRP']),
+    # 'synth_mode': 'testing', # 'training' or 'testing'
+    'symbols': sorted(['ADA', 'BNB', 'EOS', 'ETH', 'IOTA', 'LTC', 'NEO', 'QTUM', 'XLM', 'XRP']),
     # 'symbols': sorted({'BTC', 'ETC', 'ICX', 'LINK', 'NULS', 'ONT', 'TRX', 'TUSD', 'USDC', 'VET'}),
-    'symbols': sorted(['LTC', 'DOGE', 'SHIB', 'PEOPLE', 'FLOKI', 'PEPE', 'MEME', 'BONK', 'WIF', 'BOME']),
-    'end_time': '2024-11-20',
+    # 'symbols': sorted(['LTC', 'DOGE', 'SHIB', 'PEOPLE', 'FLOKI', 'PEPE', 'MEME', 'BONK', 'WIF', 'BOME']),
+    'end_time': '2021-08-31', #'2021-08-31', #random_date(start_date, end_date).strftime('%Y-%m-%d'),
     'limit': 200, # 240,
     'interval': '1d',
-    'boost_factor': 25,
-    'model_name': 'model_ppo_crypto_trading_prod', #'model_ppo_crypto_trading_unit_12h',
+    'boost_factor': 20,
+    'model_name': 'model_ppo_crypto_trading_basic', #'model_ppo_crypto_trading_unit_12h',
     'basic_risk_mgmt': False
 }
 
@@ -125,23 +126,23 @@ synth_params = {
 }
 
 live_params = {
-    'market_data': 'original', # 'original' or 'random' or 'synthetic'
+    'market_data': 'random', # 'original' or 'random' or 'synthetic'
     'symbols': sorted(['LTC', 'DOGE', 'SHIB', 'PEOPLE', 'FLOKI', 'PEPE', 'MEME', 'BONK', 'WIF', 'BOME']),
     'end_time': None, #'2021-05-31',
     'limit': 100, # 240,
     'interval': '1d',
-    'boost_factor': 22,
-    'model_name': 'model_ppo_crypto_trading_synth_wo_trail', #'model_ppo_crypto_trading_unit_12h',
+    'boost_factor': 25,
+    'model_name': 'model_ppo_crypto_trading_killbill', #'model_ppo_crypto_trading_synth_wo_trail', #'model_ppo_crypto_trading_unit_12h',
     'basic_risk_mgmt': True # complex risk management is done using web socket
 }
 
 training_params = {
-    'train_model': False,
-    'timesteps': 25_000,
-    'num_episodes': 10
+    'train_model': True,
+    'timesteps': 100_000,
+    'num_episodes': 50
 }
 
-specific_params = live_params
+specific_params = unittest_params
 
 # Create a new dictionary that combines constant_params with the selected params
 selected_params = financial_params.copy()  # Start with a copy of constant_params

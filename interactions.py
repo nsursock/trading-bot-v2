@@ -24,6 +24,8 @@ binance = ccxt.binance()
 # Initialize Web3 with Alchemy URL
 web3 = Web3(Web3.HTTPProvider(os.getenv('ALCHEMY_URL')))
 
+alchemy_url = os.getenv('ALCHEMY_URL')
+
 # Contract and Wallet details
 contract_address = os.getenv('SEPOLIA_URL')
 private_key = os.getenv('PRIVATE_KEY')
@@ -119,7 +121,7 @@ def send_post_request_to_blocktorch(transaction):
     
     try:
         response_json = response.json()
-        logging.info(f"Response from blocktorch: {response_json}")
+        logging.debug(f"Response from blocktorch: {response_json}")
         return response_json
     except ValueError:
         logging.error(f"Failed to decode JSON response: {response.text}")
@@ -267,27 +269,39 @@ def compute_prices(latest_close_price, action, tp_percentage, sl_percentage):
         
     return tp, sl
 
-from web3.auto import w3
-from web3 import Web3
-from eth_utils import to_bytes, is_hex
+# from web3.auto import w3
+# from web3 import Web3
+# from eth_utils import to_bytes, is_hex
 
-def decode_revert_reason(revert_code):
+# def decode_revert_reason(revert_code):
+#     try:
+#         # Check if revert_code is a ContractCustomError instance
+#         if isinstance(revert_code, ContractCustomError):
+#             # Use the second element of the tuple as the revert reason
+#             revert_bytes = to_bytes(hexstr=revert_code.message)  # Access the message directly
+#             logging.info("revert_bytes = to_bytes")
+#             revert_msg = w3.eth.call({
+#                 'to': contract_address,
+#                 'data': revert_bytes
+#             })
+#             logging.info("revert_msg = w3.eth.call")
+#             # Decode the revert message using the ABI decoder
+#             decoded_message = w3.codec.decode_single('string', revert_msg)
+#             logging.error("Revert message decoded: %s", decoded_message)
+#     except Exception as e:
+#         logging.error("Failed to decode revert reason: %s", str(e))
+
+# from test_decode import decode_revert_reason
+
+def decode_revert_reason(error):
     try:
-        # Check if revert_code is a ContractCustomError instance
-        if isinstance(revert_code, ContractCustomError):
-            # Use the second element of the tuple as the revert reason
-            revert_bytes = to_bytes(hexstr=revert_code.message)  # Access the message directly
-            logging.info("revert_bytes = to_bytes")
-            revert_msg = w3.eth.call({
-                'to': contract_address,
-                'data': revert_bytes
-            })
-            logging.info("revert_msg = w3.eth.call")
-            # Decode the revert message using the ABI decoder
-            decoded_message = w3.codec.decode_single('string', revert_msg)
-            logging.error("Revert message decoded: %s", decoded_message)
+        if isinstance(error, ContractLogicError):
+            revert_reason = error.revert_reason
+            logging.error(f'Revert reason: {revert_reason}')
+        else:
+            logging.error(f'Unhandled exception type: {type(error)}')
     except Exception as e:
-        logging.error("Failed to decode revert reason: %s", str(e))
+        logging.error(f'Failed to decode revert reason: {e}')
 
 def open_trade(latest_close_price, pairs, symbol, action, collateral=200, leverage=10, tp_price=0, sl_price=0):
     # leverageExperiment = 5
@@ -406,10 +420,12 @@ def open_trade(latest_close_price, pairs, symbol, action, collateral=200, levera
         logging.info(f"Opened trade for symbol: {symbol}, Transaction hash: {receipt.transactionHash.hex()}")
         return web3.to_hex(tx_hash)  # Return transaction hash on success
 
-    except Exception as error:
-        logging.error(f'An error occurred: {error}')
+    except ContractLogicError as error:
+        logging.error(f'Contract logic error occurred: {error}')
         if tx_data:
             decode_error(error, tx_data)
         else:
             decode_revert_reason(error)
-        # return -1  # Indicate failure due to exception
+    except Exception as error:
+        logging.error(f'An unexpected error occurred: {error}')
+        decode_revert_reason(error)

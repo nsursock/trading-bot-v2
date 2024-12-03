@@ -6,9 +6,12 @@ from datetime import datetime
 import logging
 from tabulate import tabulate
 import unittest
+import shutil
 
 from parameters import selected_params, training_params, log_parameters
 from reporting import *
+
+
 
 class TestTradingAgent(unittest.TestCase):
     
@@ -44,10 +47,19 @@ class TestTradingAgent(unittest.TestCase):
             
             # Train the agent
             if training_params['train_model']:
-                self.agent.train(timesteps=training_params['timesteps'], output_dir=plot_dir)
+                # self.agent.train(timesteps=training_params['timesteps'], output_dir=plot_dir)
+                self.agent.profile_train(timesteps=training_params['timesteps'], output_dir=plot_dir)
+                
+                # Copy the model to the script directory with the specified name
+                model_name = selected_params.get('model_name', 'default_model_name')
+                model_path = os.path.join(plot_dir, 'model_ppo_crypto_trading.zip')  # Replace 'model_file_name' with the actual model file name
+                script_dir = os.path.dirname(os.path.abspath(__file__))
+                destination_path = os.path.join(script_dir, f"{model_name}.zip")
+                shutil.copy(model_path, destination_path)
 
             # Evaluate on the test set
-            actions_history, rewards_history, episode_durations, balances, net_worths = self.agent.evaluate(episodes=training_params['num_episodes'])
+            # actions_history, rewards_history, episode_durations, balances, net_worths = self.agent.evaluate(episodes=training_params['num_episodes'])
+            actions_history, rewards_history, episode_durations, balances, net_worths = self.agent.profile_evaluate(episodes=training_params['num_episodes'])
 
             # Redirect print to both console and file
             sys.stdout = DualOutput(os.path.join(plot_dir, "output_recap.log"))
@@ -86,8 +98,8 @@ class TestTradingAgent(unittest.TestCase):
                 ["End Date", end_time.date()],
                 ["End Time", end_time.time()],
                 ["Days Covered", days_covered],
-                ["Avg Net Profit", f"{net_profit_1:,.2f}"],
-                ["Avg Num Trades", f"{num_trades:,.2f}"],
+                ["Avg Net Profit / Episode", f"{net_profit_1:,.2f}"],
+                ["Avg Num Trades / Episode", f"{num_trades:,.2f}"],
                 ["Strategy Return", f"{net_profit_1 / initial_balance * 100:.2f}%"],
                 # ["Strategy Return 2", f"{net_profit_2 / initial_balance * 100:.2f}%"],
                 # ["Strategy Return 3", f"{strategy_return_3:.2f}%"]
@@ -95,6 +107,10 @@ class TestTradingAgent(unittest.TestCase):
 
             # Print the table
             print(tabulate(data, headers=["Metric", "Value"], tablefmt="pretty"))
+            
+            if training_params['train_model']:
+                print(f"Reliability training: {round(self.train_env.episode_counter - self.train_env.episodes_below_min_balance) / self.train_env.episode_counter * 100:.2f}%")
+            print(f"Reliability testing: {round(self.test_env.episode_counter - self.test_env.episodes_below_min_balance) / self.test_env.episode_counter * 100:.2f}%")
 
             # # At the end of your script, ensure the file is closed
             # sys.stdout.close()

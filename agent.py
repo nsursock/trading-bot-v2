@@ -9,6 +9,9 @@ import time
 import os
 from reporting import plot_training_metrics
 
+import cProfile
+import pstats
+
 class TradingAgent:
     def __init__(self, train_env, eval_env, test_env, training_params=None, financial_params=None, output_dir='.'):
         # Wrap the environment with Monitor and DummyVecEnv
@@ -104,6 +107,19 @@ class TradingAgent:
             return self.step_schedule
         else:
             raise ValueError(f"Unknown schedule type: {schedule_type}")
+        
+    def profile_train(self, timesteps=10000, output_dir="."):
+        profiler = cProfile.Profile()
+        profiler.enable()
+        
+        # Call the method you want to profile
+        result = self.train(timesteps, output_dir)
+        
+        profiler.disable()
+        stats = pstats.Stats(profiler).sort_stats('cumtime')
+        stats.print_stats(20)  # Print the top 10 functions by cumulative time
+        
+        return result
 
     def train(self, timesteps=10000, output_dir="."):
         training_metrics = {
@@ -124,6 +140,19 @@ class TradingAgent:
         self.model.learn(total_timesteps=timesteps, callback=[log_metrics_callback, early_stopping_callback])
         self.model.save(os.path.join(output_dir, "model_ppo_crypto_trading"))
         plot_training_metrics(training_metrics, save_path=os.path.join(output_dir, "training_metrics.png"))
+
+    def profile_evaluate(self, episodes=10):
+        profiler = cProfile.Profile()
+        profiler.enable()
+        
+        # Call the method you want to profile
+        result = self.evaluate(episodes)
+        
+        profiler.disable()
+        stats = pstats.Stats(profiler).sort_stats('cumtime')
+        stats.print_stats(20)  # Print the top 10 functions by cumulative time
+        
+        return result
 
     def evaluate(self, episodes=10):
         actions_history = []

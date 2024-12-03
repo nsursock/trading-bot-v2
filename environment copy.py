@@ -8,9 +8,6 @@ from utilities import get_liquidation_threshold, handle_risk_management_optimize
 import pandas as pd
 import glob
 
-import cProfile
-import pstats
-
 class TradingEnvironment(gym.Env):
     def __init__(self, data_matrix, timestamps, mapping, render_mode='human', params=None, reward_function=None, market_data=None, live_mode=False):
         super(TradingEnvironment, self).__init__()
@@ -84,8 +81,6 @@ class TradingEnvironment(gym.Env):
         self.num_episodes = self.params.get('num_episodes', 1)
         
         self.live_mode = live_mode  # Add a flag to indicate live or backtesting mode
-        
-        self.episodes_below_min_balance = 0  # Initialize counter for episodes with balance below min
         
     def update_data(self, data_matrix, timestamps):
         self.data_matrix = data_matrix
@@ -280,14 +275,11 @@ class TradingEnvironment(gym.Env):
         
         :return: Tuple containing win probability and win/loss ratio.
         """
-        # Limit the history to the last N trades for performance
-        recent_history = self.history[-100:]  # Adjust the number as needed
-
-        if not recent_history:
+        if not self.history:
             return 0, 0  # No trades have been made
 
-        wins = [trade for trade in recent_history if trade['pnl'] > 0]
-        losses = [trade for trade in recent_history if trade['pnl'] < 0]
+        wins = [trade for trade in self.history if trade['pnl'] > 0]
+        losses = [trade for trade in self.history if trade['pnl'] < 0]
 
         num_wins = len(wins)
         num_losses = len(losses)
@@ -617,21 +609,18 @@ class TradingEnvironment(gym.Env):
         ):
             logging.debug(f"Max price hit for symbol {symbol_index}. Closing position.")
             self.close_position(symbol_index, max_price, exit_reason="max")
-        
         if tp_price is not None and (
             (position['type'] == 'long' and high_price >= tp_price) or
             (position['type'] == 'short' and low_price <= tp_price)
         ):
             logging.debug(f"Take-profit hit for symbol {symbol_index}. Closing position.")
             self.close_position(symbol_index, tp_price, exit_reason="tp")
-            
         if liq_price is not None and (
             (position['type'] == 'long' and low_price <= liq_price) or
             (position['type'] == 'short' and high_price >= liq_price)
         ):
             logging.debug(f"Liquidation hit for symbol {symbol_index}. Closing position.")
             self.close_position(symbol_index, liq_price, exit_reason="liq")
-        
         if sl_price is not None and (
             (position['type'] == 'long' and low_price <= sl_price) or
             (position['type'] == 'short' and high_price >= sl_price)
@@ -639,7 +628,6 @@ class TradingEnvironment(gym.Env):
             logging.debug(f"Stop-loss hit for symbol {symbol_index}. Closing position.")
             self.close_position(symbol_index, sl_price, exit_reason="sl")
 
-       
     def handle_risk_management_1s(self, symbol_index):
         position = self.positions[symbol_index]
         if not position:
@@ -707,46 +695,6 @@ class TradingEnvironment(gym.Env):
             if position['sl_price'] is None or new_sl_price < position['sl_price']:
                 position['sl_price'] = new_sl_price
                 logging.debug(f"Updated trailing stop for short position: {new_sl_price}")
-                
-    def adjust_cooldown_for_volatility(self, symbol_index):
-        # Calculate volatility using standard deviation of closing prices
-        closes = self.data_matrix[:, symbol_index, self.mapping['close']]
-        volatility = np.std(closes[-10:])  # Use the last 10 steps for volatility calculation
-
-        # Define a threshold for high volatility
-        high_volatility_threshold = 0.05  # Adjust this threshold based on your data
-
-        # Adjust cooldown based on volatility
-        if volatility > high_volatility_threshold:
-            self.cooldown_period = max(1, self.cooldown_period - 1)  # Decrease cooldown
-        else:
-            self.cooldown_period += 1  # Increase cooldown if volatility is low
-            
-    def adjust_cooldown_based_on_performance(self):
-        # Calculate recent performance metrics
-        recent_trades = self.history[-10:]  # Consider the last 10 trades
-        wins = [trade for trade in recent_trades if trade['pnl'] > 0]
-        win_rate = len(wins) / len(recent_trades) if recent_trades else 0
-
-        # Define a threshold for high performance
-        high_performance_threshold = 0.7
-
-        # Adjust cooldown based on performance
-        if win_rate > high_performance_threshold:
-            self.cooldown_period = max(1, self.cooldown_period - 1)  # Decrease cooldown
-            
-    def profile_step(self, action):
-        profiler = cProfile.Profile()
-        profiler.enable()
-        
-        # Call the method you want to profile
-        result = self.step(action)
-        
-        profiler.disable()
-        stats = pstats.Stats(profiler).sort_stats('cumtime')
-        stats.print_stats(10)  # Print the top 10 functions by cumulative time
-        
-        return result
 
     def step(self, action):
         # Get the current low and high prices for all symbols
@@ -773,14 +721,9 @@ class TradingEnvironment(gym.Env):
 
         # Execute action for each symbol
         for i in range(self.num_symbols):
-            self.adjust_cooldown_for_volatility(i)
-            self.adjust_cooldown_based_on_performance()
-
             if self.cooldowns[i] > 0:
                 self.cooldowns[i] -= 1
-                action[i] = self.actions_available['hold']
                 continue
-            
             if action[i] == self.actions_available['hold'] or (self.params['reverse_actions'] and action[i] == self.actions_available['close']):  # Hold
                 pass
             elif action[i] == self.actions_available['long'] or (self.params['reverse_actions'] and action[i] == self.actions_available['short']):  # Long
@@ -828,9 +771,7 @@ class TradingEnvironment(gym.Env):
         # Increment episode counter if done
         if done and not self.live_mode:
             logging.debug(f"Episode {self.episode_counter} completed.")
-            if balance_below_min:
-                logging.debug(f"max_steps_reached: {max_steps_reached}, balance_below_min: {balance_below_min}")
-                self.episodes_below_min_balance += 1  # Increment counter for episodes with balance below min
+            logging.debug(f"max_steps_reached: {max_steps_reached}, balance_below_min: {balance_below_min}")
             self.episode_counter += 1
 
         # Calculate reward

@@ -31,7 +31,7 @@ def risk_management_listener():
         try:
             # Wait for a new message to process
             i, low_price, high_price = risk_management_queue.get()
-            live_env.envs[0].handle_risk_management_basic(i, low_price, high_price)
+            live_env.envs[0].get_wrapper_attr('handle_risk_management_basic')(i, low_price, high_price)
             logging.debug(f"Handled risk management for symbol index {i} with low: {low_price} and high: {high_price}")
         except Exception as e:
             logging.error(f"Error in risk management listener: {e}")
@@ -144,10 +144,10 @@ def on_message(ws, message):
                     data = transform_to_matrix(current_window)
                     logging.debug(f"Preprocessed data for current_window")  # Debug level log for data preprocessing
                     
-                    live_env.envs[0].update_data(data, timestamps)
+                    live_env.envs[0].get_wrapper_attr('update_data')(data, timestamps)
                     logging.info(f"Updated environment with new data")  # Info level log for environment update
                     
-                    obs = live_env.envs[0].next_observation()
+                    obs = live_env.envs[0].get_wrapper_attr('next_observation')()
                     logging.info(f"Obtained current observation from environment")  # Debug level log for observation retrieval
                     
                     action, _states = model.predict(obs)
@@ -157,7 +157,7 @@ def on_message(ws, message):
                     # averaged_action = sum(actions) / len(actions)
                     # logging.info(f"Averaged action: {averaged_action}")  # Log the averaged action
                     
-                    _, _, _, _, infos = live_env.envs[0].step(action)
+                    _, _, _, _, infos = live_env.envs[0].get_wrapper_attr('step')(action)
                     logging.info(f"Stepped environment with action {action}")  # Debug level log for environment stepping
                     
                     logging.info(f"Infos: {infos}")
@@ -179,7 +179,7 @@ def on_message(ws, message):
                                 symbol, trade_index, is_long = latest_trade
                                 close_trade(trade_index, latest_price, is_long)
                             
-                            open_trade(latest_price, fetch_symbols(), symbol, trade_type, info.get('collateral'), info.get('leverage'), info.get('tp_price'), info.get('sl_price'))
+                            open_trade(latest_price, fetch_symbols(), symbol, trade_type, round(info.get('collateral')), round(info.get('leverage')), info.get('tp_price'), info.get('sl_price'))
                             logging.info(f"Opened {trade_type} for {symbol} with latest price {latest_price} and info {info}")
                             
                         elif trade_type == 'close' and current_trades:  # Close trades if they exist
@@ -209,7 +209,7 @@ def on_open(ws):
     logging.info("WebSocket connection opened")
     logging.debug("Initializing trading bot components")
 
-    from utilities import preprocess_data
+    from utilities import preprocess_data, select_cryptos
     from parameters import selected_params, training_params, log_parameters
     from environment import TradingEnvironment
     
@@ -219,11 +219,14 @@ def on_open(ws):
     # financial_params['kelly_fraction'] = 0.5
     # financial_params['risk_per_trade'] = 0.018
     financial_params['initial_balance'] = 1000
+    financial_params['symbols'] = select_cryptos(25)
+    
     log_parameters(financial_params)
     logging.debug(f"Financial parameters set: {financial_params}")
 
     # # Prepare historical data
     data_matrix, timestamps, mapping, valid_symbols, current_window = preprocess_data(10, financial_params['symbols'], financial_params['interval'], financial_params['limit'])
+    financial_params['symbols'] = valid_symbols
     
     # Initialize the environment with live data
     environment = TradingEnvironment(data_matrix=data_matrix, timestamps=timestamps, mapping=mapping, render_mode='human', params=selected_params, reward_function=calculate_reward, market_data=None, live_mode=True)
@@ -234,14 +237,14 @@ def on_open(ws):
     logging.debug("Environment initialized and normalized")
     
     # Set the environment to the latest step
-    live_env.envs[0].reset()  # Ensure the environment is reset to start
+    live_env.envs[0].get_wrapper_attr('reset')()  # Ensure the environment is reset to start
     logging.debug("Environment reset to initial state")
     
     if current_window is None:
         logging.error("Failed to prepare historical data. Exiting.")
         raise RuntimeError('Failed to prepare historical data. Exiting.')
     
-    logging.info(f"Prepared historical data for trading with {len(live_env.envs[0].params['symbols'])} symbols")
+    logging.info(f"Prepared historical data for trading with {len(live_env.envs[0].get_wrapper_attr('params')['symbols'])} symbols")
     
     params = {
         "method": "SUBSCRIBE",
