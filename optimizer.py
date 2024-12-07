@@ -107,7 +107,7 @@ def objective(timesteps, num_episodes, n_steps_index, batch_size_index, n_epochs
     constant_params = {
         # 'symbols': sorted(['BTC', 'ETH', 'BNB', 'SOL', 'NEAR', 'LINK', 'ADA', 'SHIB', 'BONK', 'PEPE']),
         'symbols': sorted(['ADA', 'BNB', 'EOS', 'ETH', 'IOTA', 'LTC', 'NEO', 'QTUM', 'XLM', 'XRP']),
-        'end_time': '2021-08-31',
+        'end_time': '2021-05-31',
         'adjust_leverage': True,
         'risk_mgmt': 'fractals',
         'reverse_actions': False,
@@ -117,7 +117,7 @@ def objective(timesteps, num_episodes, n_steps_index, batch_size_index, n_epochs
         'borrowing_fee_per_hour': 0.0001,  # 0.01% per hour
         'market_data': 'original', # 'original' or 'random' or 'synthetic'
         'model_name': 'model_ppo_crypto_trading',
-        'basic_risk_mgmt': False
+        'basic_risk_mgmt': True
     }
     
     training_params = {
@@ -221,10 +221,10 @@ pbounds = {
     'kelly_fraction': (0.1, 0.75),
     'interval_index': (0, 11),
     'limit': (250, 1000),
-    'collateral_min': (50, 1000),
+    'collateral_min': (10, 1000),
     'collateral_max': (1000, 1_000_000),
     # Training parameters
-    'timesteps': (20_000, 50_000),
+    'timesteps': (20_000, 100_000),
     'num_episodes': (10, 50),
     'n_steps_index': (0, 3),  # Index for n_steps
     'batch_size_index': (0, 3),  # Index for batch sizes
@@ -259,8 +259,8 @@ def main():
 
     # Perform optimization
     optimizer.maximize(
-        init_points=5,
-        n_iter=20
+        init_points=10,
+        n_iter=40
     )
 
     # Sort and list the best parameters by performance score
