@@ -459,52 +459,52 @@ def select_cryptos(count):
     selected_cryptos = filtered_symbols[:count]
     return selected_cryptos
 
-from numba import njit
+# from numba import njit
 
-@njit
-def handle_risk_management_1s_numba(symbol_index, position_type, low_prices, high_prices, sl_prices, tp_prices, liq_prices, max_prices):
-    sl_price = sl_prices[symbol_index]
-    tp_price = tp_prices[symbol_index]
-    liq_price = liq_prices[symbol_index]
-    max_price = max_prices[symbol_index]
+# @njit
+# def handle_risk_management_1s_numba(symbol_index, position_type, low_prices, high_prices, sl_prices, tp_prices, liq_prices, max_prices):
+#     sl_price = sl_prices[symbol_index]
+#     tp_price = tp_prices[symbol_index]
+#     liq_price = liq_prices[symbol_index]
+#     max_price = max_prices[symbol_index]
 
-    # Check for max price hit
-    if max_price is not None:
-        for high_price in high_prices:
-            if position_type == 1 and high_price >= max_price:
-                return symbol_index, max_price, "max"
-        for low_price in low_prices:
-            if position_type == 0 and low_price <= max_price:
-                return symbol_index, max_price, "max"
+#     # Check for max price hit
+#     if max_price is not None:
+#         for high_price in high_prices:
+#             if position_type == 1 and high_price >= max_price:
+#                 return symbol_index, max_price, "max"
+#         for low_price in low_prices:
+#             if position_type == 0 and low_price <= max_price:
+#                 return symbol_index, max_price, "max"
 
-    # Check for take profit hit
-    if tp_price is not None:
-        for high_price in high_prices:
-            if position_type == 1 and high_price >= tp_price:
-                return symbol_index, tp_price, "tp"
-        for low_price in low_prices:
-            if position_type == 0 and low_price <= tp_price:
-                return symbol_index, tp_price, "tp"
+#     # Check for take profit hit
+#     if tp_price is not None:
+#         for high_price in high_prices:
+#             if position_type == 1 and high_price >= tp_price:
+#                 return symbol_index, tp_price, "tp"
+#         for low_price in low_prices:
+#             if position_type == 0 and low_price <= tp_price:
+#                 return symbol_index, tp_price, "tp"
 
-    # Check for liquidation hit
-    if liq_price is not None:
-        for low_price in low_prices:
-            if position_type == 1 and low_price <= liq_price:
-                return symbol_index, liq_price, "liq"
-        for high_price in high_prices:
-            if position_type == 0 and high_price >= liq_price:
-                return symbol_index, liq_price, "liq"
+#     # Check for liquidation hit
+#     if liq_price is not None:
+#         for low_price in low_prices:
+#             if position_type == 1 and low_price <= liq_price:
+#                 return symbol_index, liq_price, "liq"
+#         for high_price in high_prices:
+#             if position_type == 0 and high_price >= liq_price:
+#                 return symbol_index, liq_price, "liq"
 
-    # Check for stop loss hit
-    if sl_price is not None:
-        for low_price in low_prices:
-            if position_type == 1 and low_price <= sl_price:
-                return symbol_index, sl_price, "sl"
-        for high_price in high_prices:
-            if position_type == 0 and high_price >= sl_price:
-                return symbol_index, sl_price, "sl"
+#     # Check for stop loss hit
+#     if sl_price is not None:
+#         for low_price in low_prices:
+#             if position_type == 1 and low_price <= sl_price:
+#                 return symbol_index, sl_price, "sl"
+#         for high_price in high_prices:
+#             if position_type == 0 and high_price >= sl_price:
+#                 return symbol_index, sl_price, "sl"
 
-    return None, None, None
+#     return None, None, None
 
 def handle_risk_management_1s_numpy(symbol_index, position_type, low_prices, high_prices, sl_prices, tp_prices, liq_prices, max_prices, timestamps):
     # Vectorized risk management

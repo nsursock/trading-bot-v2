@@ -93,11 +93,11 @@ unittest_params = {
     'symbols': sorted(['ADA', 'BNB', 'EOS', 'ETH', 'IOTA', 'LTC', 'NEO', 'QTUM', 'XLM', 'XRP']),
     # 'symbols': sorted({'BTC', 'ETC', 'ICX', 'LINK', 'NULS', 'ONT', 'TRX', 'TUSD', 'USDC', 'VET'}),
     # 'symbols': sorted(['LTC', 'DOGE', 'SHIB', 'PEOPLE', 'FLOKI', 'PEPE', 'MEME', 'BONK', 'WIF', 'BOME']),
-    'end_time': '2021-08-31', #'2021-08-31', #random_date(start_date, end_date).strftime('%Y-%m-%d'),
-    'limit': 200, # 240,
+    'end_time': '2021-05-31', #random_date(start_date, end_date).strftime('%Y-%m-%d'),
+    'limit': 100, # 240,
     'interval': '1d',
-    'boost_factor': 20,
-    'model_name': 'model_ppo_crypto_trading_basic', #'model_ppo_crypto_trading_unit_12h',
+    'boost_factor': 23,
+    'model_name': 'model_ppo_crypto_trading_plex', #'model_ppo_crypto_trading_unit_12h',
     'basic_risk_mgmt': False
 }
 
@@ -138,8 +138,8 @@ live_params = {
 
 training_params = {
     'train_model': True,
-    'timesteps': 100_000,
-    'num_episodes': 50
+    'timesteps': 25_000,
+    'num_episodes': 10
 }
 
 specific_params = unittest_params
